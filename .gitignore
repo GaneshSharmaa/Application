@@ -1,18 +1,42 @@
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
-.buildlog/
-.history
-
-
-
-# Flutter/Dart/Pub related
-**/doc/api/
+# Dart/Flutter/Pub related
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
+.packages
+.pub-cache/
 .pub/
+build/
+.idea/
+android/gradle.properties
+*.iml
+*.lock
+*.log
 
+# macOS-specific
+.DS_Store
+
+# IntelliJ/Android Studio
+*.ipr
+*.iws
+*.iml
+.idea/
+*.bak
+*.swp
+
+# Miscellaneous
+*.class
+*.pyc
+*.swp
+*.tmp
+*.orig
+*.rej
+*.swo
+*.swn
+*.old
+*.bak
+
+# Symbol files
 app.*.symbols
+
+# Coverage reports
+coverage/
