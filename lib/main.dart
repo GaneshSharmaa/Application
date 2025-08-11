@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'chat_screen.dart';
 import 'theme_provider.dart';
-import 'setting_page.dart'; // Import your settings page
+import 'setting_page.dart'; 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() {
