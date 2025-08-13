@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:mitra/setting_page.dart';
 import 'package:mitra/widgets/model_selector.dart';
+import 'package:mitra/widgets/selected_model.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'dart:convert';
@@ -79,7 +80,34 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
   bool isTyping = false;
   bool stopTypingRequested = false;
   bool _showScrollToBottomBtn = false;
+  // Default choice; pick what you prefer
+  String _selectedModel = "GPT";
 
+  void _updateSelectedModel(String model) {
+    setState(() {
+      _selectedModel = model; // "GPT" or "Gemini"
+    });
+
+    // ✅ Update global API URL
+    switch (model) {
+      case "GPT":
+        SelectedModel.setModelUrl("https://chat-api-g1zt.onrender.com/chatgpt");
+        break;
+      case "Gemini":
+        SelectedModel.setModelUrl("https://chat-api-g1zt.onrender.com/gemini");
+        break;
+      case "Claude":
+        SelectedModel.setModelUrl("https://your-claude-api.example.com/chat");
+        break;
+      case "Grok":
+        SelectedModel.setModelUrl("https://your-grok-api.example.com/chat");
+        break;
+      default:
+        SelectedModel.setModelUrl("https://chat-api-g1zt.onrender.com/chatgpt");
+    }
+
+    debugPrint("Selected model: $_selectedModel -> API: ${SelectedModel.url}");
+  }
 
   // Speech to text variables
   late stt.SpeechToText _speech;
@@ -187,17 +215,23 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     });
   }
 
+  final Map<String, String> modelUrls = {
+    'Gemini': "https://chat-api-g1zt.onrender.com/gemini",
+    'GPT': "https://chat-api-g1zt.onrender.com/chatgpt",
+  };
+
   Future<String> sendMessageToMitra(String userMessage) async {
     stopTypingRequested = false;
     isTyping = true;
 
-    const apiUrl = 'https://gemini-fastapi-hyq6.onrender.com/chat';
+    final apiUrl = SelectedModel.url;
+    debugPrint("🚀 Sending to: $apiUrl");
 
     try {
       final response = await http.post(
         Uri.parse(apiUrl),
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"message": userMessage}),
+        body: jsonEncode({"message": userMessage}), // no "model" field needed
       );
 
       if (stopTypingRequested) {
@@ -206,15 +240,16 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
 
       isTyping = false;
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200) {        // ✅ correct success code
         final data = jsonDecode(response.body);
-        return data['reply'] ?? "⚠️ No reply from Mitra.";
+        // Your FastAPI returns {"reply": "..."}
+        return (data["reply"] as String?) ?? "⚠️ No reply from server.";
       } else {
         _showError(context, "Server error: ${response.statusCode}");
         return "⚠️ Server returned error.";
       }
 
-    } on SocketException catch (_) {
+    } on SocketException {
       isTyping = false;
       _showError(context, "Please check your internet connection.");
       return "📡 No internet connection.";
@@ -224,6 +259,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
       return "⚠️ Unexpected error occurred.";
     }
   }
+
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -295,10 +331,13 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
         actions: [
           LogoButton(
             onModelSelected: (selectedModel) {
-              print("Model selected: $selectedModel");
-              // You can update state or call API here
+              setState(() {
+                _selectedModel = selectedModel; // "Gemini" or "GPT"
+              });
+              debugPrint("✅ Model changed to $_selectedModel");
             },
           ),
+
         ],
       ),
       body: SafeArea(
@@ -502,7 +541,7 @@ class _TypingIndicatorState extends State<TypingIndicator> with SingleTickerProv
         mainAxisSize: MainAxisSize.min,
         children: [
           const Text(
-            "thinking",
+            "",
             style: TextStyle(color: Colors.white70, fontSize: 15),
           ),
           const SizedBox(width: 10),

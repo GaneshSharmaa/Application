@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'glass_pill.dart';
+import 'selected_model.dart';
+
 
 class LogoButton extends StatefulWidget {
   final List<String> models;
@@ -31,6 +33,14 @@ class _LogoButtonState extends State<LogoButton> with SingleTickerProviderStateM
     'GPT': 'assets/icon/gpt.png',
     'Grok': 'assets/icon/grok.png',
   };
+  // 🧠 Map model to API URL
+  final Map<String, String> modelUrls = {
+    'Gemini': "https://chat-api-g1zt.onrender.com/gemini",
+    // 'Claude': "https://claude-chat-api.onrender.com",
+    'GPT': "https://chat-api-g1zt.onrender.com/chatgpt",
+    // 'Grok': "https://grok-chat-api.onrender.com",
+  };
+
 
   @override
   void initState() {
@@ -100,21 +110,20 @@ class _LogoButtonState extends State<LogoButton> with SingleTickerProviderStateM
                       },
                       child: IntrinsicWidth(
                         child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: widget.models.map((model) {
+                          children: modelIcons.keys.map((model) {
                             return Padding(
                               padding: const EdgeInsets.symmetric(vertical: 6),
                               child: GlassPill(
                                 modelName: model,
                                 iconPath: modelIcons[model],
-                                onTap: () {
-                                  widget.onModelSelected?.call(model);
-                                  _controller.reverse().then((_) => _removeOverlay());
-                                },
+                                  onTap: () {
+                                    SelectedModel.setModelUrl(modelUrls[model] ?? SelectedModel.baseUrl);
+                                    print("Selected model: $model -> API: ${SelectedModel.url}");
+                                  }
                               ),
                             );
                           }).toList(),
-                        ),
+                        )
                       ),
                     ),
                   ),

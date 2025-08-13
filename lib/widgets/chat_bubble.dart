@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mitra/widgets/markdown_with_copy.dart';
 import 'package:mitra/widgets/typewriter_markdown.dart';
+import 'selected_model.dart';
 
 class ChatBubble extends StatefulWidget {
   final String text;
