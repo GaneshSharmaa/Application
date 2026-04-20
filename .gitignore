@@ -12,6 +12,10 @@ android/gradle.properties
 *.lock
 *.log
 
+# Models
+models
+*.gguf
+
 # macOS-specific
 .DS_Store
 
