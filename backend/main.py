@@ -1,9 +1,11 @@
 import torch
 from llama_cpp import Llama
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import logging
-from typing import Optional
+from typing import Optional, List
+from datetime import datetime
 
 # Logging setup
 logging.basicConfig(level=logging.INFO)
@@ -16,8 +18,8 @@ print("=" * 60)
 # ============================================================================
 # MODEL PATHS - Update these to your local paths
 # ============================================================================
-LLAMA_PATH = "./models/llama-3.1-8b-q8_0.gguf"     # Download from HF
-GEMMA_PATH = "./models/gemma-4-E2B-it-Q8_0.gguf"   # Download from HF
+LLAMA_PATH = "./backend/models/llama-3.1-8b-q8_0.gguf"
+GEMMA_PATH = "./backend/models/gemma-4-E2B-it-Q8_0.gguf"
 
 print(f"Llama path: {LLAMA_PATH}")
 print(f"Gemma path: {GEMMA_PATH}")
@@ -69,7 +71,7 @@ try:
     print("✓ Gemma 2B loaded successfully!")
 except FileNotFoundError:
     print(f"✗ Gemma model not found at {GEMMA_PATH}")
-    print("  Download from: https://huggingface.co/QuantFactory/Gemma-2-2b-Instruct-GGUF")
+    print("  Download from: https://huggingface.co/unsloth/gemma-4-E2B-it-GGUF")
     gemma_model = None
 except Exception as e:
     print(f"✗ Error loading Gemma: {e}")
@@ -79,28 +81,58 @@ except Exception as e:
 # FASTAPI APP
 # ============================================================================
 app = FastAPI(title="MITRA - Dual Model Backend", version="2.0")
-print("\n✓ FastAPI app initialized!")
+
+# Add CORS middleware for frontend integration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+print("\n✓ FastAPI app initialized with CORS!")
 
 # ============================================================================
 # PYDANTIC MODELS (Request/Response)
 # ============================================================================
-class GenerateRequest(BaseModel):
-    prompt: str
-    model: str = "llama"  # "llama" or "gemma"
-    max_tokens: int = 500
-    temperature: float = 0.3
-    top_p: float = 0.9
-    repeat_penalty: float = 1.25
 
-class GenerateResponse(BaseModel):
-    status: str
-    response: Optional[str] = None
-    model_used: str
-    error: Optional[str] = None
+class Message(BaseModel):
+    role: str  # "user" or "assistant"
+    content: str
+
+class ChatCompletionRequest(BaseModel):
+    messages: List[Message]
+    model: str = "gemma-4"  # Model ID
+    temperature: float = 0.4
+    max_tokens: int = 500
+    top_p: float = 0.9
+
+class ChatCompletionResponse(BaseModel):
+    id: str
+    content: str
+    model: str
+    usage: dict
+
+class ModelInfo(BaseModel):
+    id: str
+    name: str
+    description: str
+    available: bool
 
 # ============================================================================
 # HELPER FUNCTIONS
 # ============================================================================
+
+def get_model_by_id(model_id: str):
+    """Get model instance by ID."""
+    if model_id == "gemma-4":
+        return gemma_model, "gemma-4"
+    elif model_id == "llama-3.1-8b":
+        return llama_model, "llama-3.1-8b"
+    else:
+        return None, None
+
 def post_process_response(response_text: str) -> str:
     """Clean up response by removing stop tokens."""
     for pattern in GLOBAL_STOP_TOKENS:
@@ -118,107 +150,97 @@ def health_check():
     """Health check endpoint."""
     return {
         "status": "ok",
-        "llama_loaded": llama_model is not None,
-        "gemma_loaded": gemma_model is not None
+        "models": {
+            "gemma-4": gemma_model is not None,
+            "llama-3.1-8b": llama_model is not None,
+        }
     }
 
-@app.post("/generate", response_model=GenerateResponse)
-def generate_text(req: GenerateRequest):
-    """
-    Generate text using either Llama 3.1 or Gemma 2B.
+@app.get("/models")
+def list_models() -> List[ModelInfo]:
+    """List available models."""
+    models = []
     
-    Parameters:
-    - prompt: Input text prompt
-    - model: "llama" (default) or "gemma"
-    - max_tokens: Maximum tokens to generate (default 500)
-    - temperature: Sampling temperature (default 0.3)
-    - top_p: Nucleus sampling parameter (default 0.9)
-    - repeat_penalty: Penalty for repeated tokens (default 1.25)
-    """
+    if gemma_model is not None:
+        models.append(ModelInfo(
+            id="gemma-4",
+            name="Gemma 4",
+            description="Quantized model",
+            available=True
+        ))
     
-    # Validate prompt
-    if not req.prompt or not req.prompt.strip():
-        raise HTTPException(status_code=400, detail="No prompt provided")
+    if llama_model is not None:
+        models.append(ModelInfo(
+            id="llama-3.1-8b",
+            name="Llama 3.1 8B",
+            description="Large language model",
+            available=True
+        ))
     
-    # Select model
-    if req.model.lower() == "gemma":
-        if gemma_model is None:
-            raise HTTPException(status_code=503, detail="Gemma model not loaded")
-        model = gemma_model
-        chat_format = "gemma"
-    else:  # default to llama
-        if llama_model is None:
-            raise HTTPException(status_code=503, detail="Llama model not loaded")
-        model = llama_model
-        chat_format = "llama-3"
+    return models
+
+@app.post("/chat/completions")
+def chat_completions(request: ChatCompletionRequest) -> ChatCompletionResponse:
+    """Chat completion endpoint compatible with OpenAI-like interface."""
     
-    logger.info(f"Received request for {req.model} model. Prompt: {req.prompt[:80]}...")
+    # Validate request
+    if not request.messages:
+        raise HTTPException(status_code=400, detail="No messages provided")
     
+    # Get model
+    model, model_name = get_model_by_id(request.model)
+    if model is None:
+        raise HTTPException(status_code=400, detail=f"Model {request.model} not available")
+    
+    logger.info(f"Chat completion request with {request.model}")
+    
+    # Prepare messages for the model
     messages = [
-        {"role": "user", "content": req.prompt}
+        {"role": msg.role, "content": msg.content}
+        for msg in request.messages
     ]
     
     try:
         # Call the model
         output = model.create_chat_completion(
             messages=messages,
-            max_tokens=req.max_tokens,
-            temperature=req.temperature,
-            top_p=req.top_p,
-            repeat_penalty=req.repeat_penalty,
+            max_tokens=request.max_tokens,
+            temperature=request.temperature,
+            top_p=request.top_p,
+            repeat_penalty=1.1,
             stop=GLOBAL_STOP_TOKENS
         )
         
         response_text = output["choices"][0]["message"]["content"].strip()
         response_text = post_process_response(response_text)
         
+        # Extract usage info
+        usage = output.get("usage", {})
+        
         logger.info(f"Successfully generated response ({len(response_text)} chars)")
         
-        return GenerateResponse(
-            status="success",
-            response=response_text,
-            model_used=req.model
+        return ChatCompletionResponse(
+            id=f"chatcmpl-{datetime.now().timestamp()}",
+            content=response_text,
+            model=request.model,
+            usage={
+                "promptTokens": usage.get("prompt_tokens", 0),
+                "completionTokens": usage.get("completion_tokens", 0),
+                "totalTokens": usage.get("total_tokens", 0),
+            }
         )
     
     except Exception as e:
-        logger.error(f"Error during generation: {e}")
-        return GenerateResponse(
-            status="error",
-            model_used=req.model,
-            error=str(e)
-        )
+        logger.error(f"Error during chat completion: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/generate/llama", response_model=GenerateResponse)
-def generate_llama(req: GenerateRequest):
-    """Shortcut endpoint for Llama 3.1 only."""
-    req.model = "llama"
-    return generate_text(req)
-
-@app.post("/generate/gemma", response_model=GenerateResponse)
-def generate_gemma(req: GenerateRequest):
-    """Shortcut endpoint for Gemma 2B only."""
-    req.model = "gemma"
-    return generate_text(req)
-
-@app.get("/models")
-def list_models():
-    """List available models and their status."""
-    return {
-        "available_models": {
-            "llama": {
-                "name": "Meta-Llama-3.1-8B-Instruct",
-                "loaded": llama_model is not None,
-                "quantization": "Q8_0",
-                "context_window": 4096
-            },
-            "gemma": {
-                "name": "Gemma-2-2b-Instruct",
-                "loaded": gemma_model is not None,
-                "quantization": "Q8_0",
-                "context_window": 2048
-            }
-        }
-    }
+@app.post("/generate")
+def generate_text(request: ChatCompletionRequest):
+    """Legacy generate endpoint for backward compatibility."""
+    try:
+        return chat_completions(request)
+    except HTTPException:
+        raise
 
 # ============================================================================
 # RUN SERVER

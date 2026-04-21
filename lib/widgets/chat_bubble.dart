@@ -88,10 +88,15 @@ class _ChatBubbleState extends State<ChatBubble> with TickerProviderStateMixin {
           child: widget.isUser
               ? Container(
             constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.grey[800],
-              borderRadius: BorderRadius.circular(16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: const BoxDecoration(
+              color: Color(0xFF281845), // Deep purple
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+                bottomLeft: Radius.circular(20),
+                bottomRight: Radius.circular(4),
+              ),
             ),
             child: Text(
               widget.text,
@@ -103,7 +108,11 @@ class _ChatBubbleState extends State<ChatBubble> with TickerProviderStateMixin {
             children: [
               Container(
                 constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.90),
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF202022), // Dark grey
+                  borderRadius: BorderRadius.circular(20),
+                ),
                 child: widget.animateBotText
                     ? TypewriterMarkdown(
                   data: widget.text,
@@ -121,13 +130,19 @@ class _ChatBubbleState extends State<ChatBubble> with TickerProviderStateMixin {
                     position: _slideAnimation,
                     child:
                     Padding(
-                      padding: const EdgeInsets.only(left: 8.0, top: 4),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.copy, size: 20),
-                            onPressed: () {
+                      padding: const EdgeInsets.only(left: 0.0, top: 8),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF202022), // Dark grey match
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.copy_outlined, size: 20, color: Colors.grey),
+                              onPressed: () {
                               Clipboard.setData(ClipboardData(text: widget.text));
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
@@ -150,7 +165,7 @@ class _ChatBubbleState extends State<ChatBubble> with TickerProviderStateMixin {
                               );
                             },
                             child: IconButton(
-                              icon: const Icon(Icons.refresh, size: 20),
+                              icon: const Icon(Icons.refresh, size: 20, color: Colors.grey),
                               onPressed: () {
                                 if (!_isRegenerating) {
                                   _spinController.forward(from: 0);
@@ -178,7 +193,7 @@ class _ChatBubbleState extends State<ChatBubble> with TickerProviderStateMixin {
                                 icon: Icon(
                                   _isLiked ? Icons.thumb_up_alt : Icons.thumb_up_alt_outlined,
                                   size: 20,
-                                  color: _isLiked ? Colors.green : null,
+                                  color: _isLiked ? Colors.white : Colors.grey,
                                 ),
                                 onPressed: () {
                                   setState(() {
@@ -201,7 +216,7 @@ class _ChatBubbleState extends State<ChatBubble> with TickerProviderStateMixin {
                                 icon: Icon(
                                   _isDisliked ? Icons.thumb_down_alt : Icons.thumb_down_alt_outlined,
                                   size: 20,
-                                  color: _isDisliked ? Colors.red : null,
+                                  color: _isDisliked ? Colors.white : Colors.grey,
                                 ),
                                 onPressed: () {
                                   setState(() {
@@ -215,12 +230,6 @@ class _ChatBubbleState extends State<ChatBubble> with TickerProviderStateMixin {
                                 },
                               ),
                             ),
-                          IconButton(
-                            icon: const Icon(Icons.share, size: 20),
-                            onPressed: () {
-                              // TODO: Share logic
-                            },
-                          ),
                         ],
                       ),
                     ),

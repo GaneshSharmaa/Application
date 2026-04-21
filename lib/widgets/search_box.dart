@@ -110,20 +110,20 @@ class SearchBox extends StatelessWidget {
                     child: Container(
                       width: 40,
                       height: 40,
-                      margin: const EdgeInsets.only(right: 4, left: 8),
+                      margin: const EdgeInsets.only(right: 8),
                       decoration: BoxDecoration(
                         color: isListening
-                            ? Colors.red
-                            : Colors.white.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(20),
+                            ? Colors.red.withOpacity(0.2)
+                            : Colors.white.withOpacity(0.1),
+                        shape: BoxShape.circle,
                         border: isListening
                             ? Border.all(
-                            color: Colors.red.withOpacity(0.3), width: 2)
+                            color: Colors.red.withOpacity(0.5), width: 2)
                             : null,
                       ),
                       child: Icon(
                         isListening ? Icons.mic : Icons.mic_none,
-                        color: isListening ? Colors.white : Colors.grey[300],
+                        color: isListening ? Colors.red : Colors.grey[400],
                         size: 20,
                       ),
                     ),
@@ -135,11 +135,11 @@ class SearchBox extends StatelessWidget {
                       height: 40,
                       margin: const EdgeInsets.only(right: 8),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(20),
+                        color: Colors.white.withOpacity(0.1),
+                        shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.graphic_eq,
-                          color: Colors.white, size: 20),
+                      child: Icon(Icons.mic_off_outlined,
+                          color: Colors.grey[400], size: 20),
                     ),
                   ),
                 ],
